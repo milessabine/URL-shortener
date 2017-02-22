@@ -10,6 +10,7 @@ import (
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -55,8 +56,11 @@ func main() {
 
 		}
 	})
-
-	http.ListenAndServe(":8080", nil)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	http.ListenAndServe(":"+port, nil)
 }
 
 const form = `
@@ -69,7 +73,7 @@ const form = `
     </form>
 	<div>
 		{{range $key, $value := $}}
-		<p><a href="http://localhost:8080/{{$key}}"> {{$key}}</a> | {{$value.FullURL}} | {{$value.Clicks}}</p>
+		<p><a href="/{{$key}}"> {{$key}}</a> | {{$value.FullURL}} | {{$value.Clicks}}</p>
 		{{end}}
 	</div>
   </body>
