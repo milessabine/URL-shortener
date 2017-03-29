@@ -1,4 +1,19 @@
 {
-
-    "rootPath": "github.com/milessabine/URL-shortener"
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "bGGHLDALPp4LvisfK5HZZJFk9J4=",
+			"path": "github.com/lib/pq",
+			"revision": "472a0745531a17dbac346e828b4c60e73ddff30c",
+			"revisionTime": "2017-03-13T20:04:23Z"
+		},
+		{
+			"checksumSHA1": "bP3nAXruMQIWlDBfTP6ifOskIFk=",
+			"path": "github.com/lib/pq/oid",
+			"revision": "472a0745531a17dbac346e828b4c60e73ddff30c",
+			"revisionTime": "2017-03-13T20:04:23Z"
+		}
+	],
+	"rootPath": "github.com/milessabine/URL-shortener"
 }
