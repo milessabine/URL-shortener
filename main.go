@@ -5,6 +5,7 @@ Example: https:goo.gl/
 package main
 
 import (
+	"database/sql"
 	"fmt"
 	"hash/crc32"
 	"html/template"
@@ -12,33 +13,45 @@ import (
 	"net/http"
 	"os"
 	"strings"
-)
 
-type Counter struct {
-	Clicks  int
-	FullURL string
-}
+	_ "github.com/lib/pq"
+)
 
 func main() {
 
-	store := map[string]*Counter{}
+	dbURL := os.Getenv("DATABASE_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
 	formTemplate := template.Must(template.New("formTemplate").Parse(form))
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/" {
-			err := formTemplate.Execute(w, store)
+			counters, err := getCounters(db)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			err = formTemplate.Execute(w, counters)
 			if err != nil {
 				log.Println("Unable to open form.", err)
 			}
 		} else {
 			shortCode := strings.TrimPrefix(r.URL.Path, "/")
-			site, ok := store[shortCode]
-			if ok {
-				site.Clicks = site.Clicks + 1
-
-				http.Redirect(w, r, site.FullURL, http.StatusFound)
-			} else {
+			site, err := getCounter(db, shortCode)
+			switch {
+			case err == sql.ErrNoRows:
 				http.NotFound(w, r)
+			case err != nil:
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			default:
+				if err := incrementClicks(db, site); err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+				}
+				http.Redirect(w, r, site.FullURL, http.StatusFound)
 			}
 		}
 	})
@@ -51,7 +64,12 @@ func main() {
 			x := &Counter{FullURL: shortenedURL}
 			checkSum := crc32.Checksum([]byte(shortenedURL), crc32q)
 			shortCode := fmt.Sprintf("%08x", checkSum)
-			store[shortCode] = x
+			x.ShortURL = shortCode
+			err := createCounter(db, x)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+
 			w.Write([]byte(shortCode))
 
 		}
@@ -72,8 +90,8 @@ const form = `
       <button type="submit">Shorten</button>
     </form>
 	<div>
-		{{range $key, $value := $}}
-		<p><a href="/{{$key}}"> {{$key}}</a> | {{$value.FullURL}} | {{$value.Clicks}}</p>
+		{{range $c := $}}
+		<p><a href="/{{$c.ShortURL}}"> {{$c.ShortURL}}</a> | {{$c.FullURL}} | {{$c.Clicks}}</p>
 		{{end}}
 	</div>
   </body>
